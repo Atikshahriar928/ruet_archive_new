@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "251166023993",
+    "project_id": "ruet-archieve-new",
+    "storage_bucket": "ruet-archieve-new.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:251166023993:android:b42776f9329c8db0e8c8e8",
+        "android_client_info": {
+          "package_name": "com.ruet.archive.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "251166023993-628v9cvc7cm04b60furb2dhvhmvmceca.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ruet.archive.app",
+            "certificate_hash": "13a788f12244d426c88d3ec6594b7afa855d764f"
+          }
+        },
+        {
+          "client_id": "251166023993-q8b4v1sbvmdj4hnjdtkch6seaea6288a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4w7Oj9fAUh5jGC5t_tx8vMM7I8J5Vsqc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "251166023993-q8b4v1sbvmdj4hnjdtkch6seaea6288a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
