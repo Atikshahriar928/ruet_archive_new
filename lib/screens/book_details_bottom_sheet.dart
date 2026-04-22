@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/models.dart';
+import '../managers/database_manager.dart';
+import 'messaging_screen.dart';
 
 // RUET Theme Colors
 const Color zinc900 = Color(0xFF09090B);
@@ -196,7 +199,29 @@ class BookDetailsBottomSheet extends StatelessWidget {
                             width: double.infinity,
                             height: 56,
                             child: OutlinedButton.icon(
-                              onPressed: onMessageSeller,
+                              onPressed: () async {
+                                final currentUser = FirebaseAuth.instance.currentUser;
+                                if (currentUser != null) {
+                                  final chatId = await DatabaseManager.createOrGetChat(
+                                    currentUser.uid,
+                                    currentUser.displayName ?? "User",
+                                    book.ownerUid,
+                                    book.reporterName,
+                                  );
+                                  if (context.mounted) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => MessagingScreen(
+                                          chatId: chatId,
+                                          otherUserName: book.reporterName,
+                                          otherUid: book.ownerUid,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
                               icon: const Icon(Icons.chat_bubble_outline, color: emerald500),
                               label: const Text(
                                 "MESSAGE SELLER",

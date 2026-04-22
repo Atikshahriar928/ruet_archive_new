@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 import '../managers/database_manager.dart';
+import '../utils/image_utils.dart';
 
 // RUET Theme Colors
 const Color backgroundBlack = Color(0xFF000000);
@@ -34,7 +38,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
   final _mobileController = TextEditingController();
 
   bool _isLoading = false;
-  String? _profileImageUrl; 
+  String? _imageBase64; 
 
   @override
   void initState() {
@@ -59,11 +63,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
 
     _animationController.forward();
     
-    // Set initial name if available from Google
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _nameController.text = user.displayName ?? "";
-      _profileImageUrl = user.photoURL;
+      // If user has a photo from Google, we could try to handle it, 
+      // but usually we want them to upload a fresh one or just use this as initial.
     }
   }
 
@@ -78,8 +82,17 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
   }
 
   Future<void> _pickImage() async {
-    // TODO: Implement image_picker and Firebase Storage if needed
-    // For now, we keep the existing photoURL if it exists
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      final base64 = await ImageUtils.compressAndEncodeToBase64(image.path);
+      if (base64 != null) {
+        setState(() {
+          _imageBase64 = base64;
+        });
+      }
+    }
   }
 
   void _handleContinue() async {
@@ -102,7 +115,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
         dept: _deptController.text.trim(),
         series: _seriesController.text.trim(),
         mobile: _mobileController.text.trim(),
-        profileImageBase64: _profileImageUrl,
+        profileImageBase64: _imageBase64,
       );
 
       await DatabaseManager.saveUserProfile(profile);
@@ -138,7 +151,6 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
                 children: [
                   const SizedBox(height: 40),
                   
-                  // Header
                   const Text(
                     "Complete Profile",
                     style: TextStyle(
@@ -168,14 +180,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
                             decoration: BoxDecoration(
                               color: zinc900,
                               borderRadius: BorderRadius.circular(40),
-                              image: (_profileImageUrl != null)
+                              image: (_imageBase64 != null)
                                 ? DecorationImage(
-                                    image: NetworkImage(_profileImageUrl!),
+                                    image: MemoryImage(base64Decode(_imageBase64!)),
                                     fit: BoxFit.cover,
                                   )
                                 : null,
                             ),
-                            child: (_profileImageUrl == null)
+                            child: (_imageBase64 == null)
                                 ? const Icon(Icons.person, color: zinc400, size: 48)
                                 : null,
                           ),
@@ -215,7 +227,6 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
 
                   const SizedBox(height: 48),
 
-                  // Input Form
                   _onboardingTextField(
                     label: "FULL NAME",
                     controller: _nameController,
@@ -255,7 +266,6 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> with Tick
 
                   const SizedBox(height: 60),
 
-                  // Action Buttons
                   SizedBox(
                     width: double.infinity,
                     height: 60,

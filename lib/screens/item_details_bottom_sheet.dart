@@ -161,6 +161,7 @@ class ItemDetailsBottomSheet extends StatelessWidget {
                           builder: (context) => MessagingScreen(
                             chatId: chatId,
                             otherUserName: item.reporterName,
+                            otherUid: item.ownerUid,
                           ),
                         ),
                       );

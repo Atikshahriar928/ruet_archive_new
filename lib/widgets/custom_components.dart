@@ -53,12 +53,7 @@ class AppImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (source == null || source!.isEmpty) {
-      return Container(
-        width: width,
-        height: height,
-        color: const Color(0xFF1C1C1C),
-        child: Icon(Icons.image_not_supported, color: const Color(0xFF71717A), size: 32),
-      );
+      return _placeholder();
     }
 
     try {

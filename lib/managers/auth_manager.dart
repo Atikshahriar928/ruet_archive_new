@@ -78,8 +78,9 @@ class AuthManager {
       ).timeout(const Duration(seconds: 15));
 
       if (result.user != null) {
-        _startBackgroundSync(result.user!);
-        onResult(true, null);
+        // Verification email sent automatically now
+        await result.user!.sendEmailVerification();
+        onResult(true, "Verification email sent. Please check your inbox.");
       }
     } on FirebaseAuthException catch (e) {
       onResult(false, e.message);
@@ -97,6 +98,10 @@ class AuthManager {
       ).timeout(const Duration(seconds: 15));
       
       if (result.user != null) {
+        if (!result.user!.emailVerified) {
+          onResult(false, "PLEASE_VERIFY_EMAIL");
+          return;
+        }
         _startBackgroundSync(result.user!);
       }
       onResult(true, null);
