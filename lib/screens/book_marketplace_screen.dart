@@ -22,13 +22,21 @@ class BookMarketplaceScreen extends StatefulWidget {
 
 class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
   String _selectedDept = "All";
-  final List<String> _departments = ["All", "CSE", "EEE", "ME", "CE", "ETE", "MTE", "GCE", "CFPE"];
+  final List<String> _departments = [
+    "All", "EEE", "CSE", "ECE", "ETE", "CE", "Arch", "URP", "BECM", "Chem", "Math", "Phy", "Hum"
+  ];
 
   String _sortBy = "Newest";
   final List<String> _sortOptions = ["Newest", "Price: Low to High", "Price: High to Low"];
 
   final _searchController = TextEditingController();
   String _searchQuery = "";
+
+  // Advanced Filters
+  String _filterYear = "All";
+  String _filterSemester = "All";
+  String _filterCourseName = "";
+  String _filterCourseCode = "";
 
   List<BookListing> _allBooks = [];
   bool _isLoading = true;
@@ -42,8 +50,6 @@ class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
   void _loadData() async {
     setState(() => _isLoading = true);
     try {
-      // Fetching all available books from Firestore
-      // Using getRecentBookListings with a large limit or we can add a better method to DatabaseManager
       final books = await DatabaseManager.getRecentBookListings(limitCount: 50); 
       if (mounted) {
         setState(() {
@@ -63,7 +69,13 @@ class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
       final queryMatch = _searchQuery.isEmpty || 
           book.bookName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           book.authorName.toLowerCase().contains(_searchQuery.toLowerCase());
-      return deptMatch && queryMatch;
+      
+      final yearMatch = _filterYear == "All" || book.year == _filterYear;
+      final semMatch = _filterSemester == "All" || book.semester == _filterSemester;
+      final courseNameMatch = _filterCourseName.isEmpty || book.courseName.toLowerCase().contains(_filterCourseName.toLowerCase());
+      final courseCodeMatch = _filterCourseCode.isEmpty || book.courseCode.toLowerCase().contains(_filterCourseCode.toLowerCase());
+
+      return deptMatch && queryMatch && yearMatch && semMatch && courseNameMatch && courseCodeMatch;
     }).toList();
 
     if (_sortBy == "Price: Low to High") {
@@ -74,6 +86,157 @@ class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
       list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     }
     return list;
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Container(
+          decoration: const BoxDecoration(
+            color: zinc900,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 12,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: zinc800, borderRadius: BorderRadius.circular(2))),
+              ),
+              const SizedBox(height: 24),
+              const Text("Advanced Filters", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 32),
+              
+              _dropdownFilter(
+                "Department",
+                _departments,
+                _selectedDept,
+                (val) => setSheetState(() {
+                  _selectedDept = val!;
+                }),
+              ),
+              const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _dropdownFilter(
+                      "Academic Year",
+                      ["All", "1st Year", "2nd Year", "3rd Year", "4th Year"],
+                      _filterYear,
+                      (val) => setSheetState(() => _filterYear = val!),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _dropdownFilter(
+                      "Semester",
+                      ["All", "Odd", "Even"],
+                      _filterSemester,
+                      (val) => setSheetState(() => _filterSemester = val!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _textFieldFilter("Course Name", (val) => setSheetState(() => _filterCourseName = val), initial: _filterCourseName),
+              const SizedBox(height: 24),
+              _textFieldFilter("Course Code", (val) => setSheetState(() => _filterCourseCode = val), initial: _filterCourseCode),
+              const SizedBox(height: 40),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedDept = "All";
+                          _filterYear = "All";
+                          _filterSemester = "All";
+                          _filterCourseName = "";
+                          _filterCourseCode = "";
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Reset All", style: TextStyle(color: zinc500, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {}); 
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: emerald500,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text("Apply Filters", style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dropdownFilter(String label, List<String> options, String current, Function(String?) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: zinc500, fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(color: backgroundBlack, borderRadius: BorderRadius.circular(12), border: Border.all(color: zinc800)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: current,
+              isExpanded: true,
+              dropdownColor: zinc900,
+              items: options.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(color: Colors.white, fontSize: 14)))).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _textFieldFilter(String label, Function(String) onChanged, {String initial = ""}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: zinc500, fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        TextField(
+          onChanged: onChanged,
+          controller: TextEditingController(text: initial)..selection = TextSelection.fromPosition(TextPosition(offset: initial.length)),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: "Enter $label...",
+            hintStyle: const TextStyle(color: zinc500, fontSize: 14),
+            filled: true,
+            fillColor: backgroundBlack,
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: zinc800)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: emerald500)),
+          ),
+        ),
+      ],
+    );
   }
 
   void _showBookDetails(BookListing book) {
@@ -94,7 +257,6 @@ class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
         },
         onMessageSeller: () {
           Navigator.pop(context);
-          // Navigate to chat logic
         },
       ),
     );
@@ -133,6 +295,7 @@ class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
   }
 
   Widget _buildHeader() {
+    bool isFiltered = _selectedDept != "All" || _filterYear != "All" || _filterSemester != "All" || _filterCourseName.isNotEmpty || _filterCourseCode.isNotEmpty;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -153,10 +316,23 @@ class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
             ),
           ],
         ),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: const BoxDecoration(color: zinc900, shape: BoxShape.circle),
-          child: const Icon(Icons.inventory_2, color: zinc500, size: 20),
+        GestureDetector(
+          onTap: _showFilterSheet,
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isFiltered ? emerald500.withAlpha(51) : zinc900,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isFiltered ? emerald500 : Colors.transparent,
+              ),
+            ),
+            child: Icon(
+              Icons.tune_rounded,
+              color: isFiltered ? emerald500 : Colors.white,
+              size: 20,
+            ),
+          ),
         ),
       ],
     );
@@ -273,7 +449,7 @@ class _BookMarketplaceScreenState extends State<BookMarketplaceScreen> {
         color: emerald500,
         backgroundColor: zinc900,
         child: books.isEmpty
-          ? const Center(child: Text("No books found", style: TextStyle(color: zinc500)))
+          ? const Center(child: Text("No books found with current filters", style: TextStyle(color: zinc500)))
           : GridView.builder(
               padding: const EdgeInsets.only(bottom: 100),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

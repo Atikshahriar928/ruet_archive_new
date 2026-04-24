@@ -30,15 +30,19 @@ class SellBookScreen extends StatefulWidget {
 class _SellBookScreenState extends State<SellBookScreen> {
   final _bookNameController = TextEditingController();
   final _authorNameController = TextEditingController();
-  final _deptNameController = TextEditingController();
   final _courseCodeController = TextEditingController();
   final _courseNameController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
 
+  String _selectedDept = "Select Dept";
   String _selectedYear = "Select Year";
   String _selectedSemester = "Select";
   String _selectedCondition = "Select Condition";
+
+  final List<String> _departments = [
+    "EEE", "CSE", "ECE", "ETE", "CE", "Arch", "URP", "BECM", "Chem", "Math", "Phy", "Hum"
+  ];
 
   bool _isLoading = false;
   bool _isSuccess = false;
@@ -55,9 +59,28 @@ class _SellBookScreenState extends State<SellBookScreen> {
 
   void _loadExistingData() async {
     setState(() => _isLoading = true);
-    // Simulation
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
+    try {
+      final book = await DatabaseManager.getBookListing(widget.editItemId!);
+      if (book != null && mounted) {
+        setState(() {
+          _bookNameController.text = book.bookName;
+          _authorNameController.text = book.authorName;
+          _courseCodeController.text = book.courseCode;
+          _courseNameController.text = book.courseName;
+          _priceController.text = book.price.toString();
+          _descriptionController.text = book.description;
+          _imagePreviewList = List.from(book.imageBase64List);
+          _selectedDept = book.deptName;
+          _selectedYear = book.year;
+          _selectedSemester = book.semester;
+          _selectedCondition = book.condition;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading existing data: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -87,7 +110,7 @@ class _SellBookScreenState extends State<SellBookScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    if (_bookNameController.text.isEmpty || _priceController.text.isEmpty || _deptNameController.text.isEmpty) {
+    if (_bookNameController.text.isEmpty || _priceController.text.isEmpty || _selectedDept == "Select Dept") {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all required fields")));
       return;
     }
@@ -99,7 +122,7 @@ class _SellBookScreenState extends State<SellBookScreen> {
         id: widget.editItemId ?? "",
         bookName: _bookNameController.text.trim(),
         authorName: _authorNameController.text.trim(),
-        deptName: _deptNameController.text.trim(),
+        deptName: _selectedDept,
         courseCode: _courseCodeController.text.trim(),
         courseName: _courseNameController.text.trim(),
         year: _selectedYear,
@@ -137,7 +160,9 @@ class _SellBookScreenState extends State<SellBookScreen> {
       body: Stack(
         children: [
           SafeArea(
-            child: SingleChildScrollView(
+            child: _isLoading 
+              ? const Center(child: CircularProgressIndicator(color: emerald500))
+              : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +183,7 @@ class _SellBookScreenState extends State<SellBookScreen> {
                       ),
                       const SizedBox(width: 16),
                       Text(
-                        widget.editItemId != null && widget.editItemId != "new" ? "Edit Listing" : "Sell Your Book",
+                        widget.editItemId != null ? "Edit Listing" : "Sell Your Book",
                         style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -252,7 +277,14 @@ class _SellBookScreenState extends State<SellBookScreen> {
 
                   Row(
                     children: [
-                      Expanded(child: _ruetTextField(label: "Dept Name", controller: _deptNameController, placeholder: "e.g. CSE")),
+                      Expanded(
+                        child: _ruetDropdown(
+                          label: "Dept Name",
+                          options: _departments,
+                          selectedOption: _selectedDept,
+                          onChanged: (val) => setState(() => _selectedDept = val!),
+                        ),
+                      ),
                       const SizedBox(width: 16),
                       Expanded(child: _ruetTextField(label: "Course Code", controller: _courseCodeController, placeholder: "e.g. CSE-2101")),
                     ],
@@ -332,7 +364,7 @@ class _SellBookScreenState extends State<SellBookScreen> {
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.black)
                           : Text(
-                              widget.editItemId != null && widget.editItemId != "new" ? "UPDATE LISTING" : "PUBLISH LISTING",
+                              widget.editItemId != null ? "UPDATE LISTING" : "PUBLISH LISTING",
                               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1),
                             ),
                     ),
@@ -359,7 +391,7 @@ class _SellBookScreenState extends State<SellBookScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    widget.editItemId != null && widget.editItemId != "new" ? "Listing Updated!" : "Listing Published!",
+                    widget.editItemId != null ? "Listing Updated!" : "Listing Published!",
                     style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ],

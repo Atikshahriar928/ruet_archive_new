@@ -60,11 +60,9 @@ class _InboxScreenState extends State<InboxScreen> {
                         
                         final chats = snapshot.data ?? [];
                         
-                        // We can't filter by 'live' names easily here without fetching all profiles first, 
-                        // so we'll filter by the cached names in participantNames for the search.
                         final filtered = chats.where((chat) {
                           final otherName = chat.participantNames.entries
-                              .firstWhere((e) => e.key != currentUid, orElse: () => MapEntry("", "Unknown"))
+                              .firstWhere((e) => e.key != currentUid, orElse: () => const MapEntry("", "Unknown"))
                               .value;
                           return otherName.toLowerCase().contains(_searchQuery.toLowerCase());
                         }).toList();
@@ -201,11 +199,14 @@ class _ConversationItemState extends State<_ConversationItem> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.otherUid.isEmpty) {
+       return const SizedBox.shrink();
+    }
+
     return StreamBuilder<UserProfile?>(
       stream: DatabaseManager.getUserProfileFlow(widget.otherUid),
       builder: (context, snapshot) {
         final profile = snapshot.data;
-        // Fallback to cached chat name if profile stream isn't ready
         final name = profile?.fullName ?? widget.chat.participantNames[widget.otherUid] ?? "User";
         final image = profile?.profileImageBase64;
 

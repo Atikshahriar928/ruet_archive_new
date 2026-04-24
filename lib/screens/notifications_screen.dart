@@ -27,8 +27,7 @@ class NotificationModel {
       id: doc.id,
       title: data['title'] ?? 'New Notification',
       message: data['message'] ?? data['body'] ?? '', 
-      // Robust key checking for different notification payloads
-      itemId: data['itemId'] ?? data['item_id'] ?? data['chatId'] ?? data['id'] ?? '',
+      itemId: data['itemId'] ?? '',
       type: data['type'] ?? 'general',
       timestamp: data['timestamp'] is Timestamp 
           ? data['timestamp'] 
@@ -72,12 +71,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   IconData _getIconForType(String type) {
-    final t = type.toLowerCase();
-    if (t.contains('message') || t.contains('chat')) return Icons.message_rounded;
-    if (t.contains('lost')) return Icons.search_rounded;
-    if (t.contains('found')) return Icons.inventory_2_rounded;
-    if (t.contains('book')) return Icons.menu_book_rounded;
-    return Icons.notifications_active_rounded;
+    switch (type.toLowerCase()) {
+      case 'message':
+      case 'chat':
+        return Icons.message_rounded;
+      case 'lost':
+        return Icons.search_rounded;
+      case 'found':
+        return Icons.inventory_2_rounded;
+      case 'book':
+        return Icons.menu_book_rounded;
+      default:
+        return Icons.notifications_active_rounded;
+    }
   }
 
   @override

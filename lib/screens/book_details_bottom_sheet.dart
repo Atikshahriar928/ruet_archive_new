@@ -171,6 +171,24 @@ class BookDetailsBottomSheet extends StatelessWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _metadataDetailCard(
+                                label: "COURSE",
+                                value: book.courseName.isEmpty ? "N/A" : book.courseName,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _metadataDetailCard(
+                                label: "QUALITY/SEM",
+                                value: "${book.condition} / ${book.semester}",
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 32),
 
                         const Text(
@@ -184,7 +202,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          book.description,
+                          book.description.isEmpty ? "No description provided." : book.description,
                           style: const TextStyle(
                             color: zinc500,
                             fontSize: 14,
@@ -306,7 +324,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
 
   Widget _metadataDetailCard({required String label, required String value}) {
     return Container(
-      height: 100,
+      constraints: const BoxConstraints(minHeight: 100),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.4),
@@ -316,6 +334,7 @@ class BookDetailsBottomSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
@@ -331,9 +350,11 @@ class BookDetailsBottomSheet extends StatelessWidget {
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

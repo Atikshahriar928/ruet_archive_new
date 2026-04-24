@@ -7,6 +7,8 @@ import '../widgets/custom_components.dart';
 import 'item_details_bottom_sheet.dart';
 import 'book_details_bottom_sheet.dart';
 import 'item_context_menu.dart';
+import 'reporting_form_screen.dart';
+import 'sell_book_screen.dart';
 
 // RUET Theme Colors
 const Color backgroundBlack = Color(0xFF000000);
@@ -139,6 +141,29 @@ class _MyActivityScreenState extends State<MyActivityScreen> {
     }
   }
 
+  void _navigateToEdit(dynamic item) {
+    if (item is LostFoundItem) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReportingFormScreen(
+            mode: item.type == "LOST" ? ReportMode.lost : ReportMode.found,
+            editItemId: item.id,
+          ),
+        ),
+      ).then((_) => _loadData());
+    } else if (item is BookListing) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SellBookScreen(
+            editItemId: item.id,
+          ),
+        ),
+      ).then((_) => _loadData());
+    }
+  }
+
   void _showContextMenu(BuildContext context, dynamic item) {
     HapticFeedback.heavyImpact();
     
@@ -154,7 +179,7 @@ class _MyActivityScreenState extends State<MyActivityScreen> {
         itemType: type,
         onEdit: () {
           Navigator.pop(context);
-          // TODO: Implement Edit screen if you have one
+          _navigateToEdit(item);
         },
         onMarkAction: () {
           Navigator.pop(context);

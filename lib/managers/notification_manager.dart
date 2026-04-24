@@ -46,18 +46,23 @@ class NotificationManager {
       _saveTokenToFirestore(token);
     });
 
-    // 4. Handle Foreground Messages
+    // 4. Handle Foreground Messages (Prevent Double Notification)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint("NOTI_DEBUG: Received foreground message: ${message.notification?.title ?? message.data['title']}");
+      
+      // We ONLY show a local notification if the app is in the foreground.
+      // Firebase does not automatically show notifications when the app is in the foreground.
       if (!kIsWeb) {
         _showLocalNotification(message);
       }
     });
     
-    // 5. Subscribe to global topic for posts (Mobile only)
+    // 5. Subscribe to required topics
     if (!kIsWeb) {
       await _messaging.subscribeToTopic('all_reports');
-      debugPrint("NOTI_DEBUG: Subscribed to all_reports topic");
+      await _messaging.subscribeToTopic('new_lost_items');
+      await _messaging.subscribeToTopic('new_found_items');
+      debugPrint("NOTI_DEBUG: Subscribed to all topics");
     }
 
     // 6. Initial token sync if logged in
@@ -119,30 +124,20 @@ class NotificationManager {
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint("NOTI_DEBUG: Handling background message: ${message.messageId}");
   
-  // To show a notification with sound when app is closed/background (Data-only messages)
-  final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
-  const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const InitializationSettings initSettings = InitializationSettings(android: androidSettings);
-  await localNotifications.initialize(initSettings);
-
+  // TO FIX DOUBLE NOTIFICATION:
+  // We should NOT trigger a local notification here if the message already has a notification payload.
+  // Android's system tray handles 'notification' payloads automatically when the app is in the background.
+  
+  // If you are sending DATA-ONLY messages (no 'notification' field in the JSON from Node.js), 
+  // you might need local notifications here. 
+  // But if your Node.js sends a 'notification' object, the line below causes the "Double-Dip".
+  
+  /* 
   String? title = message.notification?.title ?? message.data['title'];
   String? body = message.notification?.body ?? message.data['body'];
-
   if (title != null || body != null) {
-    await localNotifications.show(
-      message.hashCode,
-      title,
-      body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-          playSound: true,
-        ),
-      ),
-    );
+    // Commented out to prevent double-dipping for standard notification payloads
+    // _showLocalNotification(message); 
   }
+  */
 }

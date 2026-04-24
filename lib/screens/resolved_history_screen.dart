@@ -22,6 +22,8 @@ class _ResolvedHistoryScreenState extends State<ResolvedHistoryScreen> {
   String _selectedTab = "Lost";
   List<LostFoundItem> _resolvedItems = [];
   bool _isLoading = true;
+  final Set<String> _selectedItemIds = {};
+  bool _isSelectionMode = false;
 
   @override
   void initState() {
@@ -41,6 +43,8 @@ class _ResolvedHistoryScreenState extends State<ResolvedHistoryScreen> {
         setState(() {
           _resolvedItems = items;
           _isLoading = false;
+          _selectedItemIds.clear();
+          _isSelectionMode = false;
         });
       }
     } catch (e) {
@@ -56,6 +60,94 @@ class _ResolvedHistoryScreenState extends State<ResolvedHistoryScreen> {
     }).toList();
   }
 
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedItemIds.contains(id)) {
+        _selectedItemIds.remove(id);
+        if (_selectedItemIds.isEmpty) _isSelectionMode = false;
+      } else {
+        _selectedItemIds.add(id);
+        _isSelectionMode = true;
+      }
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      final list = _filteredList;
+      if (_selectedItemIds.length == list.length) {
+        _selectedItemIds.clear();
+        _isSelectionMode = false;
+      } else {
+        for (var item in list) {
+          _selectedItemIds.add(item.id);
+        }
+        _isSelectionMode = true;
+      }
+    });
+  }
+
+  void _deleteSelected() async {
+    if (_selectedItemIds.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: zinc900,
+        title: const Text("Delete Items", style: TextStyle(color: Colors.white)),
+        content: Text("Are you sure you want to delete ${_selectedItemIds.length} items from your history?", style: const TextStyle(color: zinc500)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        for (var id in _selectedItemIds) {
+          await DatabaseManager.deleteItem("lost_found", id);
+        }
+        _loadData();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _clearAll() async {
+    final list = _filteredList;
+    if (list.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: zinc900,
+        title: const Text("Clear Page", style: TextStyle(color: Colors.white)),
+        content: Text("Are you sure you want to delete all ${list.length} ${_selectedTab.toLowerCase()} items?", style: const TextStyle(color: zinc500)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Clear All", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        for (var item in list) {
+          await DatabaseManager.deleteItem("lost_found", item.id);
+        }
+        _loadData();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,7 +161,8 @@ class _ResolvedHistoryScreenState extends State<ResolvedHistoryScreen> {
               const SizedBox(height: 20),
               _buildHeader(),
               const SizedBox(height: 32),
-              _buildTabs(),
+              if (!_isSelectionMode) _buildTabs(),
+              if (_isSelectionMode) _buildSelectionActions(),
               const SizedBox(height: 24),
               Expanded(
                 child: RefreshIndicator(
@@ -92,38 +185,90 @@ class _ResolvedHistoryScreenState extends State<ResolvedHistoryScreen> {
           ),
         ),
       ),
+      floatingActionButton: _isSelectionMode 
+        ? FloatingActionButton.extended(
+            onPressed: _deleteSelected,
+            backgroundColor: Colors.red,
+            icon: const Icon(Icons.delete, color: Colors.white),
+            label: Text("Delete (${_selectedItemIds.length})"),
+          )
+        : null,
     );
   }
 
   Widget _buildHeader() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(color: zinc900, shape: BoxShape.circle),
-            child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              "Resolved History",
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
-            ),
-            Text(
-              "YOUR SUCCESSFUL MATCHES",
-              style: TextStyle(
-                color: zinc500,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                if (_isSelectionMode) {
+                  setState(() {
+                    _isSelectionMode = false;
+                    _selectedItemIds.clear();
+                  });
+                } else {
+                  Navigator.pop(context);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(color: zinc900, shape: BoxShape.circle),
+                child: Icon(_isSelectionMode ? Icons.close : Icons.arrow_back_ios_new, color: Colors.white, size: 18),
               ),
             ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isSelectionMode ? "Selecting..." : "Resolved History",
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+                ),
+                Text(
+                  _isSelectionMode ? "${_selectedItemIds.length} items selected" : "YOUR SUCCESSFUL MATCHES",
+                  style: const TextStyle(color: zinc500, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                ),
+              ],
+            ),
           ],
+        ),
+        if (!_isSelectionMode && _filteredList.isNotEmpty)
+          IconButton(
+            onPressed: _clearAll,
+            icon: const Icon(Icons.delete_sweep, color: zinc500),
+            tooltip: "Clear Page",
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSelectionActions() {
+    final allSelected = _selectedItemIds.length == _filteredList.length;
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: _selectAll,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: allSelected ? emerald500 : zinc900,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: allSelected ? emerald500 : zinc800),
+            ),
+            child: Row(
+              children: [
+                Icon(allSelected ? Icons.check_circle : Icons.circle_outlined, color: allSelected ? Colors.black : zinc500, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  allSelected ? "Deselect All" : "Select All",
+                  style: TextStyle(color: allSelected ? Colors.black : Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -190,71 +335,96 @@ class _ResolvedHistoryScreenState extends State<ResolvedHistoryScreen> {
 
   Widget _resolvedItemCard(LostFoundItem item) {
     final image = item.imageBase64List.isNotEmpty ? item.imageBase64List.first : null;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: zinc900,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: zinc800),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: AppImage(
-                  source: image,
-                  width: 56,
-                  height: 56,
-                  placeholderIcon: Icons.inventory_2,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final isSelected = _selectedItemIds.contains(item.id);
+
+    return GestureDetector(
+      onLongPress: () => _toggleSelection(item.id),
+      onTap: () {
+        if (_isSelectionMode) {
+          _toggleSelection(item.id);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? emerald500.withAlpha(26) : zinc900,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isSelected ? emerald500 : zinc800),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Stack(
                   children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: AppImage(
+                        source: image,
+                        width: 56,
+                        height: 56,
+                        placeholderIcon: Icons.inventory_2,
+                      ),
                     ),
-                    Text(
-                      "${item.location} • ${item.date}",
-                      style: const TextStyle(color: zinc500, fontSize: 12),
-                    ),
+                    if (isSelected)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: emerald500.withAlpha(128),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.check, color: Colors.black),
+                        ),
+                      ),
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: emerald500.withAlpha(26),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: emerald500),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        "${item.location} • ${item.date}",
+                        style: const TextStyle(color: zinc500, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Text(
-                  "RESOLVED",
-                  style: TextStyle(color: emerald500, fontSize: 10, fontWeight: FontWeight.w900),
+                if (!_isSelectionMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: emerald500.withAlpha(26),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: emerald500),
+                  ),
+                  child: const Text(
+                    "RESOLVED",
+                    style: TextStyle(color: emerald500, fontSize: 10, fontWeight: FontWeight.w900),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _infoBox(label: "RESOLUTION", value: "Returned"),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _infoBox(label: "RESOLVED ON", value: _formatDate(item.resolvedDate)),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _infoBox(label: "RESOLUTION", value: "Returned"),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _infoBox(label: "RESOLVED ON", value: _formatDate(item.resolvedDate)),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

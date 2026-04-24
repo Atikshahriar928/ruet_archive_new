@@ -11,6 +11,7 @@ const Color backgroundBlack = Color(0xFF000000);
 const Color zinc900 = Color(0xFF09090B);
 const Color zinc800 = Color(0xFF18181B);
 const Color zinc500 = Color(0xFF71717A);
+const Color emerald500 = Color(0xFF10B981);
 const Color orange500 = Color(0xFFF97316);
 const Color blue500 = Color(0xFF3B82F6);
 
@@ -50,12 +51,21 @@ class _ReportingFormScreenState extends State<ReportingFormScreen> {
   void _loadExistingData() async {
     setState(() => _isLoading = true);
     try {
-      // In a real app, you'd fetch the specific item details from Firestore here
-      // For now, if editing, we'll assume we need to fetch it
+      final item = await DatabaseManager.getLostFoundItem(widget.editItemId!);
+      if (item != null && mounted) {
+        setState(() {
+          _titleController.text = item.title;
+          _locationController.text = item.location;
+          _dateController.text = item.date;
+          _descriptionController.text = item.description;
+          _selectedCategory = item.category;
+          _imagePreviewList = List.from(item.imageBase64List);
+        });
+      }
     } catch (e) {
       debugPrint("Error loading item: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -157,7 +167,9 @@ class _ReportingFormScreenState extends State<ReportingFormScreen> {
     return Scaffold(
       backgroundColor: backgroundBlack,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator(color: emerald500))
+          : SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,9 +188,7 @@ class _ReportingFormScreenState extends State<ReportingFormScreen> {
                   ),
                   const SizedBox(width: 16),
                   Text(
-                    widget.editItemId != null && widget.editItemId != "new" 
-                        ? "Edit Report" 
-                        : (widget.mode == ReportMode.lost ? "Report Lost" : "Report Found"),
+                    widget.editItemId != null ? "Edit Report" : (widget.mode == ReportMode.lost ? "Report Lost" : "Report Found"),
                     style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -303,7 +313,7 @@ class _ReportingFormScreenState extends State<ReportingFormScreen> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.black)
                       : Text(
-                          widget.editItemId != null && widget.editItemId != "new" ? "Update Report" : "Submit Report",
+                          widget.editItemId != null ? "Update Report" : "Submit Report",
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                 ),

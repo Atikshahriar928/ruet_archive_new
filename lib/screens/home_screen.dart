@@ -198,7 +198,8 @@ class _HomeScreenState extends State<HomeScreen> {
                      builder: (context) => MessagingScreen(
                        chatId: itemId,
                        otherUserName: "Chat",
-                       // MessagingScreen logic will derive otherUid if null
+                       // Logic here to fetch the other user ID from the chatId
+                       otherUid: itemId.replaceAll(currentUid, "").replaceAll("_", ""),
                      ),
                    ),
                  );
@@ -234,7 +235,6 @@ class _HomeScreenState extends State<HomeScreen> {
                        },
                        onMessageSeller: () {
                           Navigator.pop(context);
-                          // Handle messaging from here if needed
                        },
                      ),
                    );
